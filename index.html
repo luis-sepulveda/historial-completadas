@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Historial de completadas por técnico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#131a22; --panel2:#0f151c; --line:#22303c;
+    --ink:#e7eef5; --muted:#8aa0b2; --teal:#2dd4bf; --amber:#fbbf24;
+    --violet:#a78bfa; --rose:#fb7185;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:Inter,system-ui,sans-serif;padding:22px 18px 60px}
+  .wrap{max-width:1240px;margin:0 auto}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:23px;margin:0 0 4px;letter-spacing:-.4px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:20px}
+  .sub b{color:var(--ink);font-weight:500}
+
+  .filtros{display:flex;flex-wrap:wrap;gap:22px;background:var(--panel);
+           border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+  .grupo{display:flex;flex-direction:column;gap:7px}
+  .grupo>label{font-size:10px;letter-spacing:1.3px;text-transform:uppercase;color:var(--muted)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{background:var(--panel2);border:1px solid var(--line);color:var(--muted);
+        padding:6px 13px;border-radius:999px;font-size:12.5px;cursor:pointer;
+        font-family:inherit;transition:.15s}
+  .chip:hover{color:var(--ink);border-color:#2f4152}
+  .chip.on{background:var(--teal);border-color:var(--teal);color:#06231f;font-weight:600}
+  .chip:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 15px}
+  .kpi .n{font-family:'Space Grotesk',sans-serif;font-size:27px;font-weight:700;line-height:1.1}
+  .kpi .l{font-size:11px;color:var(--muted);margin-top:3px}
+  .kpi.t .n{color:var(--teal)} .kpi.a .n{color:var(--amber)}
+  .kpi.v .n{color:var(--violet)} .kpi.r .n{color:var(--rose)}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .card h2{font-family:'Space Grotesk',sans-serif;font-size:14px;margin:0;
+           padding:13px 16px;border-bottom:1px solid var(--line);font-weight:500}
+  .scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:9px 11px;text-align:center;white-space:nowrap}
+  th{background:var(--panel2);color:var(--muted);font-size:10px;letter-spacing:.7px;
+     text-transform:uppercase;font-weight:600;position:sticky;top:0;cursor:pointer;user-select:none}
+  th:hover{color:var(--ink)}
+  th.izq,td.izq{text-align:left}
+  tbody tr{border-top:1px solid var(--line);cursor:pointer}
+  tbody tr:hover{background:#18212b}
+  td.tec{font-weight:500}
+  td.cero{color:#3d4d5c}
+  td.tot{font-family:'JetBrains Mono',monospace;font-weight:500;color:var(--teal)}
+  .sup{font-size:10.5px;color:var(--muted);display:block;font-weight:400;margin-top:1px}
+  tfoot td{border-top:2px solid var(--line);background:var(--panel2);font-weight:600}
+
+  .vacio{padding:34px;text-align:center;color:var(--muted);font-size:13px}
+
+  dialog{background:var(--panel);color:var(--ink);border:1px solid var(--line);
+         border-radius:14px;padding:0;max-width:900px;width:94vw;max-height:82vh}
+  dialog::backdrop{background:rgba(4,8,12,.72)}
+  .dlg-h{display:flex;justify-content:space-between;align-items:center;gap:14px;
+         padding:14px 17px;border-bottom:1px solid var(--line)}
+  .dlg-h h3{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0;font-weight:500}
+  .dlg-h button{background:var(--panel2);border:1px solid var(--line);color:var(--muted);
+                border-radius:8px;padding:5px 12px;cursor:pointer;font-family:inherit;font-size:12px}
+  .dlg-h button:hover{color:var(--ink)}
+  .dlg-b{overflow:auto;max-height:66vh}
+  .dlg-b table{font-size:12.5px}
+  .dlg-b td{white-space:normal}
+  .ot{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--amber)}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;
+        background:var(--panel2);border:1px solid var(--line)}
+  .pill.gsa{border-color:var(--violet);color:var(--violet)}
+
+  @media (max-width:640px){
+    body{padding:14px 11px 50px} h1{font-size:19px}
+    .filtros{gap:14px;padding:12px} th,td{padding:7px 8px;font-size:12px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Historial de completadas por técnico</h1>
+  <div class="sub">Técnicos DOMI · actualizado <b id="gen">—</b></div>
+
+  <div class="filtros">
+    <div class="grupo">
+      <label>Supervisor</label>
+      <div class="chips" id="fsup"></div>
+    </div>
+    <div class="grupo">
+      <label>Período</label>
+      <div class="chips" id="fper">
+        <button class="chip" data-p="hoy">Hoy</button>
+        <button class="chip" data-p="7">Últimos 7 días</button>
+        <button class="chip" data-p="mes">Este mes</button>
+        <button class="chip on" data-p="todo">Todo el histórico</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="card">
+    <h2>Detalle por técnico — toca una fila para ver sus órdenes</h2>
+    <div class="scroll"><table id="tabla"></table></div>
+  </div>
+</div>
+
+<dialog id="dlg">
+  <div class="dlg-h">
+    <h3 id="dlg-t">—</h3>
+    <button id="dlg-x">Cerrar</button>
+  </div>
+  <div class="dlg-b"><table id="dlg-tb"></table></div>
+</dialog>
+
+<script>
+const D = {"generado": "23-07-2026 10:57", "columnas": ["Reparación", "Alta 1P", "Alta 2P", "Migración 1P", "Migración 2P", "Migración 3P", "Modificación"], "supervisores": ["TERRY RIVEROL", "VICTOR MOREIRA"], "ordenes": [{"fecha": "2026-07-22", "ot": "1-3MPYANAD", "tecnico": "ALEXIS JARA", "supervisor": "TERRY RIVEROL", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Falla en cable externo Domiciliario", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MQ3LFFY", "tecnico": "ALEXIS JARA", "supervisor": "TERRY RIVEROL", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MQWWJ6I", "tecnico": "GEEYSER PEREZ O", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Falla en equipo de cliente", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPTQZVX", "tecnico": "GEEYSER PEREZ O", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPT281F", "tecnico": "GEEYSER PEREZ O", "supervisor": "VICTOR MOREIRA", "categoria": "Migración 2P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQYB0L7", "tecnico": "GEEYSER PEREZ O", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Equipo Defectuoso ONT", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ41K14", "tecnico": "GEEYSER PEREZ O", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 1P", "tipo": "Alta", "subtipo": "1 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPWUJ74", "tecnico": "LUIS CASTRO TORRES", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Sin Servicio", "codigo_cierre": "Equipo Defectuoso IPTV", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPZYYQG", "tecnico": "LUIS CASTRO TORRES", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Falla en cable Interno Domiciliario", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQSN1S3", "tecnico": "LUIS CASTRO TORRES", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Sin Servicio", "codigo_cierre": "Falla en cable Interno Domiciliario", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ4UUTU", "tecnico": "LUIS CASTRO TORRES", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Falla en cable externo Domiciliario", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQTFIER", "tecnico": "CESAR MENA OLIVEROS", "supervisor": "TERRY RIVEROL", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Falla reset plataforma", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPOHEXU", "tecnico": "CESAR MENA OLIVEROS", "supervisor": "TERRY RIVEROL", "categoria": "Migración 3P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MP9DG5H", "tecnico": "CESAR MENA OLIVEROS", "supervisor": "TERRY RIVEROL", "categoria": "Alta 1P", "tipo": "Alta", "subtipo": "1 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ07KDR", "tecnico": "CESAR MENA OLIVEROS", "supervisor": "TERRY RIVEROL", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Servicio Degradado", "codigo_cierre": "Falla en cable externo Domiciliario", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MRR8KWL", "tecnico": "CESAR MENA OLIVEROS", "supervisor": "TERRY RIVEROL", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Servicio Degradado", "codigo_cierre": "Configuracion equipo particular cliente", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ4GSS3", "tecnico": "CRISTOBAL MIRANDA VALENC", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 1P", "tipo": "Alta", "subtipo": "1 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQUO98E", "tecnico": "CRISTOBAL MIRANDA VALENC", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQTGOE1", "tecnico": "CRISTOBAL SILVA LEIVA", "supervisor": "TERRY RIVEROL", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "1 Play Servicio Degradado", "codigo_cierre": "Falla en cable externo Domiciliario", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MOOMICD", "tecnico": "CRISTOBAL SILVA LEIVA", "supervisor": "TERRY RIVEROL", "categoria": "Migración 1P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ2VS75", "tecnico": "CRISTOBAL SILVA LEIVA", "supervisor": "TERRY RIVEROL", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "1 Play Servicio Degradado", "codigo_cierre": "Falla en cable Interno Domiciliario", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPXEWJV", "tecnico": "CRISTOBAL SILVA LEIVA", "supervisor": "TERRY RIVEROL", "categoria": "Modificación", "tipo": "Modificacion postventa", "subtipo": "Modificación postventa", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MRSNWIN", "tecnico": "CRISTOBAL SILVA LEIVA", "supervisor": "TERRY RIVEROL", "categoria": "Modificación", "tipo": "Modificación de Servicio", "subtipo": "Modificación", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ9N5G8", "tecnico": "DANIEL NAVARRETE E", "supervisor": "TERRY RIVEROL", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MRH9UL4", "tecnico": "DANIEL NAVARRETE E", "supervisor": "TERRY RIVEROL", "categoria": "Modificación", "tipo": "Modificación de Servicio", "subtipo": "Modificación", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQANGM5", "tecnico": "DANIEL NAVARRETE E", "supervisor": "TERRY RIVEROL", "categoria": "Alta 1P", "tipo": "Alta", "subtipo": "1 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPXPQO7", "tecnico": "DANIEL NAVARRETE E", "supervisor": "TERRY RIVEROL", "categoria": "Migración 2P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Falla Aprovisionamiento", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ5ACOA", "tecnico": "ESTEBAN PIZARRO QUINTANA", "supervisor": "TERRY RIVEROL", "categoria": "Migración 3P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MRGY732", "tecnico": "ESTEBAN PIZARRO QUINTANA", "supervisor": "TERRY RIVEROL", "categoria": "Modificación", "tipo": "Modificación de Servicio", "subtipo": "Modificación", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQY22RZ", "tecnico": "ESTEBAN PIZARRO QUINTANA", "supervisor": "TERRY RIVEROL", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "1 Play Servicio Degradado", "codigo_cierre": "Falla en cable externo Domiciliario", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MR1WASQ", "tecnico": "ESTEBAN PIZARRO QUINTANA", "supervisor": "TERRY RIVEROL", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPY7REJ", "tecnico": "FELIPE SILVA R", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Configuracion equipo particular cliente", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQK3070", "tecnico": "FELIPE SILVA R", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPSPEP0", "tecnico": "FELIPE SILVA R", "supervisor": "VICTOR MOREIRA", "categoria": "Migración 1P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ4JFQN", "tecnico": "FELIPE SILVA R", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Sin Servicio", "codigo_cierre": "Falla en cable externo Domiciliario", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQSEUFT", "tecnico": "HERNAN CORTES HERRERA", "supervisor": "TERRY RIVEROL", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MR0PCE4", "tecnico": "HERNAN CORTES HERRERA", "supervisor": "TERRY RIVEROL", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Falla en cable externo Domiciliario", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPZW0H7", "tecnico": "HERNAN CORTES HERRERA", "supervisor": "TERRY RIVEROL", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Equipo Defectuoso IPTV", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPYOUMI", "tecnico": "HERNAN CORTES HERRERA", "supervisor": "TERRY RIVEROL", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Servicio Degradado", "codigo_cierre": "Equipo Defectuoso IPTV", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPWCCC3", "tecnico": "HERNAN CORTES HERRERA", "supervisor": "TERRY RIVEROL", "categoria": "Migración 1P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPZ6CRJ", "tecnico": "JEAN ROODLY ORELIEN", "supervisor": "TERRY RIVEROL", "categoria": "Migración 2P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQUBP15", "tecnico": "JEAN ROODLY ORELIEN", "supervisor": "TERRY RIVEROL", "categoria": "Alta 1P", "tipo": "Alta", "subtipo": "1 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ6E4AW", "tecnico": "JEAN ROODLY ORELIEN", "supervisor": "TERRY RIVEROL", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQRIF46", "tecnico": "JORDAN ROA PEREZ", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Entrega de control remoto", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MR3NAFH", "tecnico": "JORDAN ROA PEREZ", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Servicio Degradado", "codigo_cierre": "Equipo Defectuoso ONT", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MRGUIJH", "tecnico": "JORDAN ROA PEREZ", "supervisor": "VICTOR MOREIRA", "categoria": "Modificación", "tipo": "Modificación de Servicio", "subtipo": "Modificación", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ3IH81", "tecnico": "JORDAN ROA PEREZ", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Servicio Degradado", "codigo_cierre": "Falla en cable Interno Domiciliario", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MRGRNVG", "tecnico": "JORDAN ROA PEREZ", "supervisor": "VICTOR MOREIRA", "categoria": "Modificación", "tipo": "Modificación de Servicio", "subtipo": "Modificación", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQUDFN2", "tecnico": "JORDAN ROA PEREZ", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MRGT8G6", "tecnico": "JORDAN ROA PEREZ", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 1P", "tipo": "Alta", "subtipo": "1 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQAF7NZ", "tecnico": "JORGE PEZOA VICUÑA", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Falla en cable Interno Domiciliario", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPTQZ5R", "tecnico": "JORGE PEZOA VICUÑA", "supervisor": "VICTOR MOREIRA", "categoria": "Migración 3P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MRJLPUQ", "tecnico": "JORGE PEZOA VICUÑA", "supervisor": "VICTOR MOREIRA", "categoria": "Modificación", "tipo": "Modificación de Servicio", "subtipo": "Modificación", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ78IDP", "tecnico": "JORGE PEZOA VICUÑA", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Configuracion equipo particular cliente", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQNUX9N", "tecnico": "JORGE PEZOA VICUÑA", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ0J3G7", "tecnico": "JOSE PEREZ RANGEL", "supervisor": "TERRY RIVEROL", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Equipo Defectuoso IPTV", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MRDZ2NB", "tecnico": "JOSE PEREZ RANGEL", "supervisor": "TERRY RIVEROL", "categoria": "Modificación", "tipo": "Modificación de Servicio", "subtipo": "Modificación", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MIICLXE", "tecnico": "JOSE PEREZ RANGEL", "supervisor": "TERRY RIVEROL", "categoria": "Migración 2P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MOSITF2", "tecnico": "JOSE PEREZ RANGEL", "supervisor": "TERRY RIVEROL", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "1 Play Sin Servicio", "codigo_cierre": "Falla en cable externo Domiciliario", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MK444WF", "tecnico": "JOSE PEREZ RANGEL", "supervisor": "TERRY RIVEROL", "categoria": "Migración 2P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ0SD7M", "tecnico": "KEVIN TAPIA RETAMAL", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPYT6I0", "tecnico": "KEVIN TAPIA RETAMAL", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Servicio Degradado", "codigo_cierre": "Configuracion equipo particular cliente", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ470C7", "tecnico": "KEVIN TAPIA RETAMAL", "supervisor": "VICTOR MOREIRA", "categoria": "Migración 3P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ1LPRG", "tecnico": "KEVIN TAPIA RETAMAL", "supervisor": "VICTOR MOREIRA", "categoria": "Migración 3P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPAMIOU", "tecnico": "LEONEL HERNÁNDEZ OJE", "supervisor": "TERRY RIVEROL", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MNTCEW3", "tecnico": "LEONEL HERNÁNDEZ OJE", "supervisor": "TERRY RIVEROL", "categoria": "Migración 3P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MRNB9N8", "tecnico": "LEONEL HERNÁNDEZ OJE", "supervisor": "TERRY RIVEROL", "categoria": "Modificación", "tipo": "Modificación de Servicio", "subtipo": "Modificación", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MRIGIFZ", "tecnico": "LEONEL HERNÁNDEZ OJE", "supervisor": "TERRY RIVEROL", "categoria": "Migración 2P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQZEYU7", "tecnico": "LUIS MARTIN NUÑEZ", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Sin Servicio", "codigo_cierre": "Falla en cable externo Domiciliario", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ6Q7KA", "tecnico": "LUIS MARTIN NUÑEZ", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Sin Servicio", "codigo_cierre": "Equipo Defectuoso (Control MTA CM dBox VP Fono)", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ207MM", "tecnico": "LUIS MARTIN NUÑEZ", "supervisor": "VICTOR MOREIRA", "categoria": "Migración 3P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPS9O3H", "tecnico": "LUIS MARTIN NUÑEZ", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Sin Servicio", "codigo_cierre": "Falla reset plataforma", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPBBDAA", "tecnico": "LUIS MARTIN NUÑEZ", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MQW5VPS", "tecnico": "MATIAS CORNEJO D", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Servicio Degradado", "codigo_cierre": "Configuracion equipo particular cliente", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPA0HZT", "tecnico": "MATIAS CORNEJO D", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Servicio Degradado", "codigo_cierre": "Configuracion equipo particular cliente", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ25D2O", "tecnico": "MATIAS CORNEJO D", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Servicio Degradado", "codigo_cierre": "Configuracion equipo particular cliente", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MP9BCWV", "tecnico": "MATIAS CORNEJO D", "supervisor": "VICTOR MOREIRA", "categoria": "Migración 1P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MR2WHTZ", "tecnico": "MATIAS CORNEJO D", "supervisor": "VICTOR MOREIRA", "categoria": "Modificación", "tipo": "Modificación de Servicio", "subtipo": "Modificación", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MNHXC93", "tecnico": "PABLO HERNANEZ FERNANDEZ", "supervisor": "VICTOR MOREIRA", "categoria": "Migración 2P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MRI7S0M", "tecnico": "PABLO HERNANEZ FERNANDEZ", "supervisor": "VICTOR MOREIRA", "categoria": "Modificación", "tipo": "Modificación de Servicio", "subtipo": "Modificación", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ17RUR", "tecnico": "PABLO HERNANEZ FERNANDEZ", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Falla en cable externo Domiciliario", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ8JVMU", "tecnico": "PABLO HERNANEZ FERNANDEZ", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Equipo Defectuoso Control Remoto IPTV", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MRE1RLH", "tecnico": "PABLO HERNANEZ FERNANDEZ", "supervisor": "VICTOR MOREIRA", "categoria": "Migración 3P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQR8NV3", "tecnico": "RAFAEL VARGAS B", "supervisor": "TERRY RIVEROL", "categoria": "Alta 1P", "tipo": "Alta", "subtipo": "1 Play", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MRFBIAL", "tecnico": "RAFAEL VARGAS B", "supervisor": "TERRY RIVEROL", "categoria": "Migración 2P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQSQ0UJ", "tecnico": "RAFAEL VARGAS B", "supervisor": "TERRY RIVEROL", "categoria": "Migración 3P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPYBCHE", "tecnico": "YENDER BOSCAN CADENAS", "supervisor": "TERRY RIVEROL", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Falla en cable Interno Domiciliario", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQUI0BE", "tecnico": "YENDER BOSCAN CADENAS", "supervisor": "TERRY RIVEROL", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPZ6AOZ", "tecnico": "YENDER BOSCAN CADENAS", "supervisor": "TERRY RIVEROL", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Servicio Degradado", "codigo_cierre": "Configuracion equipo particular cliente", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPZOAKU", "tecnico": "YENDER BOSCAN CADENAS", "supervisor": "TERRY RIVEROL", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Falla en cable externo Domiciliario", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQMFVI9", "tecnico": "JOEL GUSTAVE GUSTA", "supervisor": "VICTOR MOREIRA", "categoria": "Migración 2P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQUU3EO", "tecnico": "JOEL GUSTAVE GUSTA", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQWWUAU", "tecnico": "JOEL GUSTAVE GUSTA", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 1P", "tipo": "Alta", "subtipo": "1 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQXXJD8", "tecnico": "MARCO PEREZ G", "supervisor": "TERRY RIVEROL", "categoria": "Migración 2P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Falla Aprovisionamiento", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQU4ER1", "tecnico": "MARCO PEREZ G", "supervisor": "TERRY RIVEROL", "categoria": "Alta 1P", "tipo": "Alta", "subtipo": "1 Play", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQW9IEV", "tecnico": "MARCO PEREZ G", "supervisor": "TERRY RIVEROL", "categoria": "Migración 1P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MR39JUK", "tecnico": "ALFREDO ALCAYAGA F", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Sin Servicio", "codigo_cierre": "Falla en cable externo Domiciliario", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MPX5CLU", "tecnico": "ALFREDO ALCAYAGA F", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Servicio Degradado", "codigo_cierre": "Falla en cable externo Domiciliario", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MQQ7UVP", "tecnico": "ALFREDO ALCAYAGA F", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MQ2G9KF", "tecnico": "ALFREDO ALCAYAGA F", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Configuracion equipo particular cliente", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MRCN9BF", "tecnico": "ALFREDO ALCAYAGA F", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MPVNG43", "tecnico": "ERICK SEPÚLVEDA CAS", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Servicio Degradado", "codigo_cierre": "Falla en cable externo Domiciliario", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQ3S6OJ", "tecnico": "ERICK SEPÚLVEDA CAS", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Falla en cable Interno Domiciliario", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MR3CSHY", "tecnico": "ERICK SEPÚLVEDA CAS", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 1P", "tipo": "Alta", "subtipo": "1 Play", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MPUWK0J", "tecnico": "JUAN ARRIAGADA C", "supervisor": "VICTOR MOREIRA", "categoria": "Migración 3P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MRHPDO9", "tecnico": "JUAN ARRIAGADA C", "supervisor": "VICTOR MOREIRA", "categoria": "Modificación", "tipo": "Modificación de Servicio", "subtipo": "Modificación", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MQ2R1VP", "tecnico": "JOSE CASTRO P", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "2 Play Servicio Degradado", "codigo_cierre": "Falla en cable Interno Domiciliario", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MRF5YAA", "tecnico": "JOSE CASTRO P", "supervisor": "VICTOR MOREIRA", "categoria": "Migración 3P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MQV2S3D", "tecnico": "JOSE CASTRO P", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 1P", "tipo": "Alta", "subtipo": "1 Play", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MPU619P", "tecnico": "MARCELO GÓMEZ GÓME", "supervisor": "TERRY RIVEROL", "categoria": "Migración 1P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MRKVXVA", "tecnico": "MARCELO GÓMEZ GÓME", "supervisor": "TERRY RIVEROL", "categoria": "Modificación", "tipo": "Modificación de Servicio", "subtipo": "Modificación", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MQ1DBTT", "tecnico": "MARCELO GÓMEZ GÓME", "supervisor": "TERRY RIVEROL", "categoria": "Migración 1P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MRT2H83", "tecnico": "MARCELO GÓMEZ GÓME", "supervisor": "TERRY RIVEROL", "categoria": "Modificación", "tipo": "Modificación de Servicio", "subtipo": "Modificación", "codigo_cierre": "Finalización ok", "ciudad": "QUILPUE"}, {"fecha": "2026-07-22", "ot": "1-3MQT8XPC", "tecnico": "MATIAS APELEO APELEO", "supervisor": "TERRY RIVEROL", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MRIXIOB", "tecnico": "MATIAS APELEO APELEO", "supervisor": "TERRY RIVEROL", "categoria": "Modificación", "tipo": "Modificación de Servicio", "subtipo": "Modificación", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MPYUIDH", "tecnico": "MATIAS APELEO APELEO", "supervisor": "TERRY RIVEROL", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Servicio Degradado", "codigo_cierre": "Equipo Defectuoso ONT", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MQTXNZW", "tecnico": "MATIAS APELEO APELEO", "supervisor": "TERRY RIVEROL", "categoria": "Alta 1P", "tipo": "Alta", "subtipo": "1 Play", "codigo_cierre": "Falla Aprovisionamiento", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MP9JJUS", "tecnico": "MATIAS APELEO APELEO", "supervisor": "TERRY RIVEROL", "categoria": "Modificación", "tipo": "Modificación de Servicio", "subtipo": "Modificación", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MRE293K", "tecnico": "NICOLAS MOYANO R", "supervisor": "VICTOR MOREIRA", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Servicio Degradado", "codigo_cierre": "Configuracion equipo particular cliente", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MQV5FRK", "tecnico": "NICOLAS MOYANO R", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 1P", "tipo": "Alta", "subtipo": "1 Play", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MPXQCZH", "tecnico": "NICOLAS MOYANO R", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 1P", "tipo": "Alta", "subtipo": "1 Play", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MQX8PS6", "tecnico": "SAMUEL FERNANDEZ VIDAL", "supervisor": "VICTOR MOREIRA", "categoria": "Migración 3P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MRKOQV4", "tecnico": "SAMUEL FERNANDEZ VIDAL", "supervisor": "VICTOR MOREIRA", "categoria": "Modificación", "tipo": "Modificación de Servicio", "subtipo": "Modificación", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MPV3RWE", "tecnico": "MATÍAS JAQUE AG", "supervisor": "TERRY RIVEROL", "categoria": "Migración 3P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MQ40AZI", "tecnico": "MATÍAS JAQUE AG", "supervisor": "TERRY RIVEROL", "categoria": "Alta 1P", "tipo": "Alta", "subtipo": "1 Play", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MQTQU3C", "tecnico": "MATÍAS JAQUE AG", "supervisor": "TERRY RIVEROL", "categoria": "Alta 1P", "tipo": "Alta", "subtipo": "1 Play", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MPUMBED", "tecnico": "JOSE SALAS MEDINA", "supervisor": "TERRY RIVEROL", "categoria": "Migración 3P", "tipo": "Migración", "subtipo": "Migración", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MRHT1GD", "tecnico": "JOSE SALAS MEDINA", "supervisor": "TERRY RIVEROL", "categoria": "Modificación", "tipo": "Modificación de Servicio", "subtipo": "Modificación", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MPOJ1WG", "tecnico": "JOSE SALAS MEDINA", "supervisor": "TERRY RIVEROL", "categoria": "Reparación", "tipo": "Reparación", "subtipo": "3 Play Servicio Degradado", "codigo_cierre": "Falla en cable externo Domiciliario", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MRSG957", "tecnico": "JOSE SALAS MEDINA", "supervisor": "TERRY RIVEROL", "categoria": "Modificación", "tipo": "Modificación de Servicio", "subtipo": "Modificación", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MPUWAN1", "tecnico": "SEBASTIAN DOSSOW A", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}, {"fecha": "2026-07-22", "ot": "1-3MQ0U8YW", "tecnico": "SEBASTIAN DOSSOW A", "supervisor": "VICTOR MOREIRA", "categoria": "Alta 2P", "tipo": "Alta", "subtipo": "2 Play", "codigo_cierre": "Finalización ok", "ciudad": "VILLA ALEMANA"}], "fecha_min": "2026-07-22", "fecha_max": "2026-07-22"};
+document.getElementById('gen').textContent = D.generado;
+
+let supActivo = 'TODOS';
+let perActivo = 'todo';
+
+// ---------- filtros de supervisor ----------
+const fsup = document.getElementById('fsup');
+[['TODOS','Todos']].concat(D.supervisores.map(s=>[s,s])).forEach(([v,t],i)=>{
+  const b=document.createElement('button');
+  b.className='chip'+(i===0?' on':''); b.dataset.s=v; b.textContent=t;
+  fsup.appendChild(b);
+});
+
+function activar(cont, attr, valor){
+  cont.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on', c.dataset[attr]===valor));
+}
+fsup.addEventListener('click', e=>{
+  const b=e.target.closest('.chip'); if(!b) return;
+  supActivo=b.dataset.s; activar(fsup,'s',supActivo); pintar();
+});
+document.getElementById('fper').addEventListener('click', e=>{
+  const b=e.target.closest('.chip'); if(!b) return;
+  perActivo=b.dataset.p; activar(document.getElementById('fper'),'p',perActivo); pintar();
+});
+
+// ---------- filtrado ----------
+function hoyISO(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function desdeISO(dias){
+  const d=new Date(); d.setDate(d.getDate()-dias);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function filtradas(){
+  const hoy=hoyISO();
+  return D.ordenes.filter(o=>{
+    if(supActivo!=='TODOS' && o.supervisor!==supActivo) return false;
+    if(perActivo==='hoy')  return o.fecha===hoy;
+    if(perActivo==='7')    return o.fecha>=desdeISO(6);
+    if(perActivo==='mes')  return o.fecha.slice(0,7)===hoy.slice(0,7);
+    return true;
+  });
+}
+
+// ---------- tabla ----------
+let ordenCol='TOTAL', ordenDesc=true;
+
+function pintar(){
+  const ords=filtradas();
+  const cols=D.columnas;
+
+  // agrupar por tecnico
+  const porTec={};
+  ords.forEach(o=>{
+    if(!porTec[o.tecnico]) porTec[o.tecnico]={tec:o.tecnico,sup:o.supervisor,TOTAL:0,items:[]};
+    const f=porTec[o.tecnico];
+    f[o.categoria]=(f[o.categoria]||0)+1; f.TOTAL++; f.items.push(o);
+  });
+  let filas=Object.values(porTec);
+
+  filas.sort((a,b)=>{
+    if(ordenCol==='tec') return ordenDesc? b.tec.localeCompare(a.tec) : a.tec.localeCompare(b.tec);
+    const x=(a[ordenCol]||0), y=(b[ordenCol]||0);
+    return ordenDesc? y-x || a.tec.localeCompare(b.tec) : x-y || a.tec.localeCompare(b.tec);
+  });
+
+  // KPIs
+  const rep=ords.filter(o=>o.categoria==='Reparación').length;
+  const alt=ords.filter(o=>o.categoria.startsWith('Alta')).length;
+  const mig=ords.filter(o=>o.categoria.startsWith('Migración')).length;
+  document.getElementById('kpis').innerHTML =
+    kpi('t',ords.length,'órdenes completadas')+
+    kpi('a',rep,'reparaciones')+
+    kpi('v',alt,'altas')+
+    kpi('r',mig,'migraciones')+
+    kpi('t',filas.length,'técnicos con trabajo');
+
+  const tabla=document.getElementById('tabla');
+  if(!filas.length){
+    tabla.innerHTML='<tbody><tr><td class="vacio">No hay órdenes registradas para este filtro. Prueba con otro período.</td></tr></tbody>';
+    return;
+  }
+
+  let h='<thead><tr><th class="izq" data-c="tec">Técnico</th>';
+  cols.forEach(c=>h+=`<th data-c="${c}">${c}</th>`);
+  h+='<th data-c="TOTAL">Total</th></tr></thead><tbody>';
+
+  filas.forEach(f=>{
+    h+=`<tr data-tec="${f.tec}"><td class="izq tec">${f.tec}<span class="sup">${f.sup}</span></td>`;
+    cols.forEach(c=>{
+      const n=f[c]||0;
+      h+=`<td class="${n?'':'cero'}">${n||'·'}</td>`;
+    });
+    h+=`<td class="tot">${f.TOTAL}</td></tr>`;
+  });
+
+  // fila de totales
+  h+='</tbody><tfoot><tr><td class="izq">TOTAL</td>';
+  cols.forEach(c=>{
+    const s=filas.reduce((a,f)=>a+(f[c]||0),0);
+    h+=`<td class="${s?'':'cero'}">${s||'·'}</td>`;
+  });
+  h+=`<td class="tot">${ords.length}</td></tr></tfoot>`;
+  tabla.innerHTML=h;
+
+  tabla.querySelectorAll('th').forEach(th=>th.addEventListener('click',()=>{
+    const c=th.dataset.c;
+    if(ordenCol===c){ordenDesc=!ordenDesc;} else {ordenCol=c;ordenDesc=(c!=='tec');}
+    pintar();
+  }));
+  tabla.querySelectorAll('tbody tr').forEach(tr=>tr.addEventListener('click',()=>{
+    abrirDetalle(porTec[tr.dataset.tec]);
+  }));
+}
+
+function kpi(cls,n,l){
+  return `<div class="kpi ${cls}"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+}
+
+// ---------- detalle ----------
+const dlg=document.getElementById('dlg');
+document.getElementById('dlg-x').addEventListener('click',()=>dlg.close());
+
+function abrirDetalle(f){
+  document.getElementById('dlg-t').textContent = f.tec+' · '+f.TOTAL+' órdenes · '+f.sup;
+  const items=f.items.slice().sort((a,b)=> b.fecha.localeCompare(a.fecha));
+  let h='<thead><tr><th class="izq">Fecha</th><th class="izq">OT</th><th class="izq">Categoría</th>'+
+        '<th class="izq">Subtipo</th><th class="izq">Cierre</th><th class="izq">Ciudad</th></tr></thead><tbody>';
+  items.forEach(o=>{
+    const gsa = /aprovisionamiento/i.test(o.codigo_cierre||'');
+    h+=`<tr><td class="izq">${o.fecha}</td><td class="izq ot">${o.ot}</td>`+
+       `<td class="izq"><span class="pill">${o.categoria}</span></td>`+
+       `<td class="izq">${o.subtipo||'—'}</td>`+
+       `<td class="izq"><span class="pill${gsa?' gsa':''}">${o.codigo_cierre||'—'}</span></td>`+
+       `<td class="izq">${o.ciudad||'—'}</td></tr>`;
+  });
+  document.getElementById('dlg-tb').innerHTML=h+'</tbody>';
+  dlg.showModal();
+}
+
+pintar();
+</script>
+</body>
+</html>
