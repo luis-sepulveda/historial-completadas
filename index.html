@@ -7,77 +7,132 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+  /* ============================================================
+     COLORES DEL TABLERO
+     Todo el color sale de aca. Si quieres cambiar un tono, lo
+     cambias en esta lista y se actualiza en toda la pagina.
+
+     Para volver al tema oscuro de antes: arriba del todo, en la
+     linea 2, cambia   <html lang="es">   por   <html lang="es" class="oscuro">
+     ============================================================ */
   :root{
-    --bg:#0b0f14; --panel:#131a22; --panel2:#0f151c; --line:#22303c;
-    --ink:#e7eef5; --muted:#8aa0b2; --teal:#2dd4bf; --amber:#fbbf24;
-    --violet:#a78bfa; --rose:#fb7185;
+    /* ---------- TEMA CLARO (el que se ve ahora) ---------- */
+    --bg:#f1f5f9;          /* fondo de la pagina */
+    --panel:#ffffff;       /* tarjetas y filas */
+    --panel2:#e9eff5;      /* cabeceras de tabla, chips apagados */
+    --zebra:#f7fafc;       /* filas pares, para no perder el renglon */
+    --line:#d3dde6;        /* lineas y bordes */
+    --ink:#16232f;         /* texto principal */
+    --muted:#5f7386;       /* texto secundario */
+
+    --teal:#0f766e;        /* completadas / totales */
+    --amber:#b45309;       /* efectividad / OT */
+    --violet:#6d28d9;      /* altas / GSA */
+    --rose:#be123c;        /* no realizadas */
+
+    /* texto que va ENCIMA de un chip encendido */
+    --sobre-teal:#ffffff; --sobre-rose:#ffffff; --sobre-amber:#ffffff;
+
+    --hover:#e4eef7;       /* fila bajo el mouse */
+    --cero:#a9b8c6;        /* los puntitos de las casillas en cero */
+    --borde-hover:#9aadbf;
+    --lavado-rose:#fdecef; /* fondo suave de la efectividad baja */
+    --sombra:rgba(20,45,70,.11);
+    --velo:rgba(16,28,40,.45);
+    --relieve:0 1px 2px rgba(20,45,70,.06);
+    --esquema:light;
   }
+
+  html.oscuro{
+    /* ---------- TEMA OSCURO (el original, apagado) ---------- */
+    --bg:#0b0f14; --panel:#131a22; --panel2:#0f151c; --zebra:#111922;
+    --line:#22303c; --ink:#e7eef5; --muted:#8aa0b2;
+    --teal:#2dd4bf; --amber:#fbbf24; --violet:#a78bfa; --rose:#fb7185;
+    --sobre-teal:#06231f; --sobre-rose:#2c0910; --sobre-amber:#2b1e02;
+    --hover:#18212b; --cero:#3d4d5c; --borde-hover:#2f4152;
+    --lavado-rose:rgba(251,113,133,.10);
+    --sombra:rgba(0,0,0,.28); --velo:rgba(4,8,12,.72);
+    --relieve:none; --esquema:dark;
+  }
+
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
-       font-family:Inter,system-ui,sans-serif;padding:22px 18px 60px}
+       font-family:Inter,system-ui,sans-serif;padding:22px 18px 60px;
+       -webkit-font-smoothing:antialiased}
   .wrap{max-width:min(1560px,97vw);margin:0 auto}
   h1{font-family:'Space Grotesk',sans-serif;font-size:23px;margin:0 0 4px;letter-spacing:-.4px}
   .sub{color:var(--muted);font-size:13px;margin-bottom:20px}
-  .sub b{color:var(--ink);font-weight:500}
+  .sub b{color:var(--ink);font-weight:600}
 
   .filtros{display:flex;flex-wrap:wrap;gap:22px;background:var(--panel);
-           border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+           border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+           margin-bottom:16px;box-shadow:var(--relieve)}
   .grupo{display:flex;flex-direction:column;gap:7px}
-  .grupo>label{font-size:10px;letter-spacing:1.3px;text-transform:uppercase;color:var(--muted)}
+  .grupo>label{font-size:10px;letter-spacing:1.3px;text-transform:uppercase;color:var(--muted);font-weight:600}
   .chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
   .chip{background:var(--panel2);border:1px solid var(--line);color:var(--muted);
         padding:6px 13px;border-radius:999px;font-size:12.5px;cursor:pointer;
         font-family:inherit;transition:.15s}
-  .chip:hover{color:var(--ink);border-color:#2f4152}
-  .chip.on{background:var(--teal);border-color:var(--teal);color:#06231f;font-weight:600}
+  .chip:hover{color:var(--ink);border-color:var(--borde-hover)}
+  .chip.on{background:var(--teal);border-color:var(--teal);color:var(--sobre-teal);font-weight:600}
   .chip:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
   /* el chip de no realizadas se prende en rojo, para no confundirse de vista */
-  .chip.nr.on{background:var(--rose);border-color:var(--rose);color:#2c0910}
-  .chip.mix.on{background:var(--amber);border-color:var(--amber);color:#2b1e02}
-  .cuenta{font-size:10.5px;opacity:.72;margin-left:5px}
+  .chip.nr.on{background:var(--rose);border-color:var(--rose);color:var(--sobre-rose)}
+  .chip.mix.on{background:var(--amber);border-color:var(--amber);color:var(--sobre-amber)}
+  .cuenta{font-size:10.5px;opacity:.8;margin-left:5px}
 
   /* buscador de tecnico */
-  .buscador{background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+  .buscador{background:var(--panel);border:1px solid var(--line);color:var(--ink);
             padding:6px 13px;border-radius:999px;font-size:12.5px;font-family:inherit;
             min-width:230px;transition:.15s}
   .buscador::placeholder{color:var(--muted)}
-  .buscador:focus{outline:none;border-color:var(--teal)}
-  .buscador.activo{border-color:var(--teal);color:var(--teal)}
+  .buscador:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(15,118,110,.14)}
+  .buscador.activo{border-color:var(--teal);color:var(--teal);font-weight:500}
   #ftec-x{display:none}
   #ftec-x.ver{display:inline-block}
 
   /* selector de dia */
-  .selector{background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+  .selector{background:var(--panel);border:1px solid var(--line);color:var(--ink);
             padding:6px 12px;border-radius:999px;font-size:12.5px;font-family:inherit;
-            color-scheme:dark;cursor:pointer;transition:.15s}
+            color-scheme:var(--esquema);cursor:pointer;transition:.15s}
   .selector:focus{outline:none;border-color:var(--teal)}
   .selector.activo{border-color:var(--teal);color:var(--teal);font-weight:600}
 
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
-  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 15px}
+  /* la barrita de color a la izquierda reemplaza al fondo oscuro:
+     se distingue de un vistazo sin ensuciar la tarjeta */
+  .kpi{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--line);
+       border-radius:12px;padding:13px 15px;box-shadow:var(--relieve)}
   .kpi .n{font-family:'Space Grotesk',sans-serif;font-size:27px;font-weight:700;line-height:1.1}
   .kpi .l{font-size:11px;color:var(--muted);margin-top:3px}
-  .kpi.t .n{color:var(--teal)} .kpi.a .n{color:var(--amber)}
-  .kpi.v .n{color:var(--violet)} .kpi.r .n{color:var(--rose)}
+  .kpi.t .n{color:var(--teal)}   .kpi.t{border-left-color:var(--teal)}
+  .kpi.a .n{color:var(--amber)}  .kpi.a{border-left-color:var(--amber)}
+  .kpi.v .n{color:var(--violet)} .kpi.v{border-left-color:var(--violet)}
+  .kpi.r .n{color:var(--rose)}   .kpi.r{border-left-color:var(--rose)}
 
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+        overflow:hidden;box-shadow:var(--relieve)}
   .card h2{font-family:'Space Grotesk',sans-serif;font-size:14px;margin:0;
-           padding:13px 16px;border-bottom:1px solid var(--line);font-weight:500}
+           padding:13px 16px;border-bottom:1px solid var(--line);font-weight:600}
   .scroll{overflow-x:auto}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{padding:9px 11px;text-align:center;white-space:nowrap}
   th{background:var(--panel2);color:var(--muted);font-size:10px;letter-spacing:.7px;
-     text-transform:uppercase;font-weight:600;position:sticky;top:0;cursor:pointer;user-select:none}
+     text-transform:uppercase;font-weight:700;position:sticky;top:0;cursor:pointer;user-select:none}
   th:hover{color:var(--ink)}
   th.izq,td.izq{text-align:left}
   tbody tr{border-top:1px solid var(--line);cursor:pointer}
-  tbody tr:hover{background:#18212b}
-  td.tec{font-weight:500}
-  td.cero{color:#3d4d5c}
-  td.tot{font-family:'JetBrains Mono',monospace;font-weight:500;color:var(--teal)}
-  td.nr{font-family:'JetBrains Mono',monospace;color:var(--rose)}
-  td.ef{font-family:'JetBrains Mono',monospace;color:var(--amber)}
-  td.ef.bajo{color:var(--rose);font-weight:600}
+  /* franjas suaves: en una tabla tan ancha ayudan a no saltarse de fila */
+  tbody tr:nth-child(even){background:var(--zebra)}
+  tbody tr:hover{background:var(--hover)}
+  td.tec{font-weight:600}
+  td.cero{color:var(--cero)}
+  td.tot{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--teal)}
+  td.nr{font-family:'JetBrains Mono',monospace;color:var(--rose);font-weight:500}
+  td.ef{font-family:'JetBrains Mono',monospace;color:var(--amber);font-weight:500}
+  /* La columna de % efectividad se saco el 05-09-2026. Estos estilos quedan
+     aqui sin uso, por si vuelve. */
+  td.ef.bajo{color:var(--rose);font-weight:700}
   th.sep,td.sep{border-left:1px solid var(--line)}
 
   /* La columna del tecnico queda clavada a la izquierda: cuando corres la
@@ -85,44 +140,57 @@
   th.tecc,td.tecc{position:sticky;left:0;min-width:186px;background:var(--panel)}
   td.tecc{z-index:2}
   th.tecc{z-index:4;background:var(--panel2)}
+  tbody tr:nth-child(even) td.tecc{background:var(--zebra)}
   tfoot td.tecc{background:var(--panel2)}
-  tbody tr:hover td.tecc{background:#18212b}
+  tbody tr:hover td.tecc{background:var(--hover)}
   /* sombrita al borde de la columna fija, para que se note que hay mas */
   th.tecc::after,td.tecc::after{content:'';position:absolute;top:0;right:0;
     width:9px;height:100%;transform:translateX(100%);pointer-events:none;
-    background:linear-gradient(90deg,rgba(0,0,0,.28),transparent)}
+    background:linear-gradient(90deg,var(--sombra),transparent)}
   .sup{font-size:10.5px;color:var(--muted);display:block;font-weight:400;margin-top:1px}
-  tfoot td{border-top:2px solid var(--line);background:var(--panel2);font-weight:600}
+  tfoot td{border-top:2px solid var(--line);background:var(--panel2);font-weight:700}
 
   .vacio{padding:34px;text-align:center;color:var(--muted);font-size:13px}
 
   dialog{background:var(--panel);color:var(--ink);border:1px solid var(--line);
-         border-radius:14px;padding:0;max-width:900px;width:94vw;max-height:82vh}
-  dialog::backdrop{background:rgba(4,8,12,.72)}
+         border-radius:14px;padding:0;max-width:900px;width:94vw;max-height:82vh;
+         box-shadow:0 18px 44px rgba(16,28,40,.20)}
+  dialog::backdrop{background:var(--velo)}
   .dlg-h{display:flex;justify-content:space-between;align-items:center;gap:14px;
-         padding:14px 17px;border-bottom:1px solid var(--line)}
-  .dlg-h h3{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0;font-weight:500}
-  .dlg-h button{background:var(--panel2);border:1px solid var(--line);color:var(--muted);
+         padding:14px 17px;border-bottom:1px solid var(--line);background:var(--panel2)}
+  .dlg-h h3{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0;font-weight:600}
+  .dlg-h button{background:var(--panel);border:1px solid var(--line);color:var(--muted);
                 border-radius:8px;padding:5px 12px;cursor:pointer;font-family:inherit;font-size:12px}
-  .dlg-h button:hover{color:var(--ink)}
+  .dlg-h button:hover{color:var(--ink);border-color:var(--borde-hover)}
   .dlg-b{overflow:auto;max-height:66vh}
   .dlg-b table{font-size:12.5px}
   .dlg-b td{white-space:normal}
-  .ot{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--amber)}
+  .dlg-b td:first-child,.dlg-b td.ot{white-space:nowrap}
+  .dlg-b tbody tr{cursor:default}
+  .ot{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--amber);font-weight:500}
   .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;
         background:var(--panel2);border:1px solid var(--line)}
-  .pill.gsa{border-color:var(--violet);color:var(--violet)}
-  .pill.ok{border-color:var(--teal);color:var(--teal)}
-  .pill.no{border-color:var(--rose);color:var(--rose)}
-  .pill.area{border-color:#2f4152;color:var(--muted);font-size:10.5px}
+  .pill.gsa{border-color:var(--violet);color:var(--violet);font-weight:600}
+  .pill.ok{border-color:var(--teal);color:var(--teal);font-weight:600}
+  .pill.no{border-color:var(--rose);color:var(--rose);font-weight:600}
+  .pill.area{border-color:var(--borde-hover);color:var(--muted);font-size:10.5px}
 
   @media (max-width:640px){
     body{padding:14px 11px 50px} h1{font-size:19px}
     .filtros{gap:14px;padding:12px} th,td{padding:7px 8px;font-size:12px}
     .buscador{min-width:0;width:100%}
     th.tecc,td.tecc{min-width:132px}
+    .kpi{padding:11px 13px} .kpi .n{font-size:23px}
   }
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+  /* si algun supervisor lo manda a imprimir, que salga en blanco y legible */
+  @media print{
+    body{background:#fff;padding:0}
+    .filtros,.kpis{box-shadow:none}
+    .card{box-shadow:none;border-color:#bbb}
+    tbody tr{page-break-inside:avoid}
+  }
 </style>
 </head>
 <body>
@@ -441,6 +509,8 @@ function pintar(){
 
   // fuera los tecnicos que no tienen nada que mostrar en esta vista
   let filas=Object.values(porTec).filter(f=>f.TOTAL>0);
+  // La efectividad se sigue calculando pero ya no se muestra en ninguna parte.
+  // Si algun dia la quieres de vuelta, este numero (f.EF) ya esta listo.
   filas.forEach(f=>{
     const g=f.CC+f.NC;
     f.EF = g ? Math.round(1000*f.CC/g)/10 : 0;
@@ -453,10 +523,8 @@ function pintar(){
   });
 
   // ---------- KPIs ----------
-  const efec = todo.length ? Math.round(1000*nComp/todo.length)/10 : 0;
   let k = kpi('t',nComp,'completadas')+
-          kpi('r',nNore,'no realizadas')+
-          kpi('a',efec+'%','efectividad');
+          kpi('r',nNore,'no realizadas');
 
   if(resActivo==='nore'){
     // en no realizadas lo que importa no es el tipo de OT, es el motivo
@@ -509,7 +577,7 @@ function pintar(){
   h+='<th data-c="TOTAL">Total</th>';
   if(conExtra){
     if(resActivo==='todo') h+='<th data-c="CC">Compl.</th>';
-    h+='<th data-c="NC">No real.</th><th data-c="EF">% Efec.</th>';
+    h+='<th data-c="NC">No real.</th>';
   }
   cols.forEach((c,i)=>h+=`<th${i?'':' class="sep"'} data-c="${c}">${c}</th>`);
   h+='</tr></thead><tbody>';
@@ -519,8 +587,7 @@ function pintar(){
     h+=`<td class="tot">${f.TOTAL}</td>`;
     if(conExtra){
       if(resActivo==='todo') h+=`<td class="tot">${f.CC}</td>`;
-      h+=`<td class="${f.NC?'nr':'cero'}">${f.NC||'·'}</td>`+
-         `<td class="ef${f.EF<85?' bajo':''}">${f.EF}%</td>`;
+      h+=`<td class="${f.NC?'nr':'cero'}">${f.NC||'·'}</td>`;
     }
     cols.forEach((c,i)=>{
       const n=f[c]||0;
@@ -534,8 +601,7 @@ function pintar(){
   h+=`<td class="tot">${ords.length}</td>`;
   if(conExtra){
     if(resActivo==='todo') h+=`<td class="tot">${nComp}</td>`;
-    h+=`<td class="${nNore?'nr':'cero'}">${nNore||'·'}</td>`+
-       `<td class="ef${efec<85?' bajo':''}">${efec}%</td>`;
+    h+=`<td class="${nNore?'nr':'cero'}">${nNore||'·'}</td>`;
   }
   cols.forEach((c,i)=>{
     const s=filas.reduce((a,f)=>a+(f[c]||0),0);
@@ -564,7 +630,7 @@ document.getElementById('dlg-x').addEventListener('click',()=>dlg.close());
 
 function abrirDetalle(f){
   const resumen = f.NC
-    ? f.CC+' completadas · '+f.NC+' no realizadas · '+f.EF+'%'
+    ? f.CC+' completadas · '+f.NC+' no realizadas'
     : f.TOTAL+' órdenes';
   document.getElementById('dlg-t').textContent = f.tec+' · '+resumen+' · '+f.sup;
 
