@@ -265,6 +265,16 @@
   .eq-fila .man{width:56px;text-align:center;flex-shrink:0;font-size:11px;padding:2px 0;
                 border-radius:6px;background:#fdf3cd;color:#7a5c00;font-weight:600}
   .eq-fila .man.vacio{background:none;color:var(--cero);font-weight:400}
+  /* aviso temprano: % mañana desde 40%. Naranjo, mas fuerte que el amarillo
+     suave de la columna, para que salte sin leer numero por numero */
+  .eq-fila .man.ojo{background:#f97316;color:#fff}
+  /* y si contando lo de hoy ya pasa el tope, rojo igual que el % semana */
+  .eq-fila .man.pasa{background:var(--rose);color:#fff}
+  /* ojo: la clase se llama asi y no "aviso" porque .aviso ya existe mas arriba
+     para otro bloque y le cambiaba el color y el alto a la fila entera */
+  .eq-fila.ojo .nom{font-weight:700;color:#c2410c}
+  .eq-fila.ojo.pasa .nom{color:var(--rose)}
+  .vered .aviso-txt{color:#c2410c;font-weight:600}
   .eq-fila .dif.menos{background:var(--panel2);color:var(--violet);font-weight:600}
   .eq-fila.normal{opacity:.72}
   /* titulos de columna, para que se entienda sin tener que preguntar */
@@ -1043,6 +1053,11 @@ function barraDirecto(actual){
 //     sin moradores de la semana / actividades asignadas de la semana x 100
 // La semana va de LUNES a SABADO.
 const TOPE_SM = 50;
+// Aviso temprano (21-09-2026): el panel se mira para reaccionar ANTES de que el
+// tecnico llegue al tope, no para enterarse cuando ya paso. Desde este
+// porcentaje de "% mañana" el tecnico sale marcado en naranjo y sube al
+// principio de la lista.
+const AVISO_SM = 40;
 
 function lunesDe(f){
   const d = new Date(f + 'T00:00:00');
@@ -1201,17 +1216,34 @@ function sinMoradores(lun){
     // mañana este numero se ve bajo y va subiendo durante el dia.
     const asigM = f.asig + f.hoyAsig;
     f.man = f.hoyAsig ? Math.round(1000 * (f.sm + f.hoy) / asigM) / 10 : null;
+    // Nivel de aviso, siempre sobre el % mañana:
+    //   2 = contando lo de hoy ya pasa el tope    1 = entro a la zona de aviso
+    // El que no trabaja hoy no tiene % mañana y no se avisa: no hay nada que
+    // hacer con el hoy, y si ya paso el tope en la semana sale en rojo igual.
+    f.nivel = f.man === null ? 0 : f.man > TOPE_SM ? 2 : f.man >= AVISO_SM ? 1 : 0;
   });
 
-  // De mayor a menor porcentaje de la semana. Los que no tienen semana no
-  // tienen porcentaje que comparar, asi que se van al final de la lista.
+  // Arriba los que hay que mirar AHORA: los que estan en aviso o ya pasaron
+  // el tope, ordenados por el peor de sus dos porcentajes. Antes la lista iba
+  // solo por el verde, y un tecnico con poca semana pero varios sin moradores
+  // en el dia quedaba al fondo, justo donde nadie mira.
+  // Despues el resto, de mayor a menor % semana como siempre. Los que no
+  // tienen semana no tienen porcentaje que comparar y van al final.
+  const urgente = f => (f.nivel > 0 || f.pct > TOPE_SM ? 0 : 1);
+  const peor = f => Math.max(f.pct, f.man === null ? 0 : f.man);
   const sinSemana = f => (f.asig ? 0 : 1);
-  filas.sort((a, b) => sinSemana(a) - sinSemana(b) || b.pct - a.pct);
+  filas.sort((a, b) => urgente(a) - urgente(b)
+                    || (urgente(a) === 0 ? peor(b) - peor(a) : 0)
+                    || sinSemana(a) - sinSemana(b) || b.pct - a.pct);
+  const enAviso = filas.filter(f => f.nivel > 0);
 
   const asig = dela.length;
   const sm = dela.filter(esSinMoradores).length;
   const pct = asig ? Math.round(1000 * sm / asig) / 10 : 0;
   const smHoy = filas.reduce((s, f) => s + f.hoy, 0);
+  // asignadas de hoy de TODO el equipo, no solo de los que salen en la lista:
+  // el lunes la lista trae unicamente a los que ya tienen sin moradores
+  const asigHoy = Object.values(deHoy).reduce((s, h) => s + h.asig, 0);
   const pasados = filas.filter(f => f.pct > TOPE_SM);
   // la semana queda corta si empieza antes de lo que trae el dashboard
   const corta = lun < D.fecha_min;
@@ -1226,7 +1258,7 @@ function sinMoradores(lun){
     // Si el tramo amarillo queda muy angosto no cabe el numero adentro,
     // asi que en ese caso se dibuja pegado afuera, a la derecha.
     const cabe = f.anchoH >= 4.5;
-    lista += `<div class="eq-fila${f.pct > TOPE_SM ? '' : ' normal'}" data-t="${f.t}" data-d="${f.enD ? 1 : 0}">
+    lista += `<div class="eq-fila${f.pct > TOPE_SM ? '' : f.nivel === 2 ? ' ojo pasa' : f.nivel === 1 ? ' ojo' : ' normal'}" data-t="${f.t}" data-d="${f.enD ? 1 : 0}">
       <span class="nom">${f.t}</span>
       <div class="pista"><span class="rell${cl}" style="width:${f.anchoV}%"></span>
         ${f.hoy ? `<span class="hoy" style="left:${f.anchoV}%;width:${f.anchoH}%">${cabe ? f.hoy : ''}</span>` : ''}
@@ -1234,7 +1266,7 @@ function sinMoradores(lun){
         <i class="tope"></i></div>
       <span class="pc">${f.asig ? `${f.sm} de ${f.asig}` : '—'}</span>
       <span class="dif${f.pct > TOPE_SM ? ' mas' : ''}">${f.asig ? f.pct + '%' : '—'}</span>
-      <span class="man${f.man === null ? ' vacio' : ''}">${f.man === null ? '·' : f.man + '%'}</span></div>`;
+      <span class="man${f.man === null ? ' vacio' : f.nivel === 2 ? ' pasa' : f.nivel === 1 ? ' ojo' : ''}">${f.man === null ? '·' : f.man + '%'}</span></div>`;
   });
 
   let tabla = '';
@@ -1264,13 +1296,16 @@ function sinMoradores(lun){
         : `Semana recién empezada: todavía no hay ningún día cargado, así que no hay verde. Lo que se ve es solo lo de hoy, medido contra las órdenes asignadas de hoy.`}
       ${pasados.length ? 'Los que pasan salen marcados en rojo.' : ''}
       ${hoyVale && smHoy ? `<span style="color:var(--amber)">Hoy van ${smHoy} más, todavía sin entrar a este cálculo.</span>` : ''}
+      ${hoyVale && enAviso.length ? `<div class="aviso-txt" style="margin-top:6px">Ojo, contando lo de hoy
+        ${enAviso.length === 1 ? 'amanece' : 'amanecen'} mañana en ${AVISO_SM}% o más:
+        ${enAviso.map(f => `${f.t} (${f.man}%)`).join(', ')}.</div>` : ''}
     </div>
     ${corta ? `<div class="vered poco" style="margin-top:10px"><b>Semana incompleta</b>
       Esta semana empieza el ${etiquetaSemana(lun).slice(0, 5)}, antes del período que carga el
       dashboard. Faltan esos días, así que el porcentaje no es el definitivo.</div>` : ''}
   </div>
 
-  <div class="bloque">
+  ${asig ? `<div class="bloque">
     <h3>La semana en números</h3>
     <div class="cifras">
       <div class="cifra"><div class="n">${asig}</div><div class="l">asignadas</div></div>
@@ -1279,7 +1314,16 @@ function sinMoradores(lun){
       <div class="cifra"><div class="n">${filas.length}</div><div class="l">técnicos</div></div>
       <div class="cifra"><div class="n">${pasados.length}</div><div class="l">sobre el ${TOPE_SM}%</div></div>
     </div>
-  </div>
+  </div>` : `<div class="bloque">
+    <h3>Hoy en números <span class="chico">la semana todavía no tiene días cargados</span></h3>
+    <div class="cifras">
+      <div class="cifra"><div class="n">${asigHoy}</div><div class="l">asignadas hoy</div></div>
+      <div class="cifra"><div class="n">${smHoy}</div><div class="l">sin moradores hoy</div></div>
+      <div class="cifra"><div class="n">${asigHoy ? Math.round(1000 * smHoy / asigHoy) / 10 : 0}%</div><div class="l">del equipo</div></div>
+      <div class="cifra"><div class="n">${filas.length}</div><div class="l">técnicos con sin moradores</div></div>
+      <div class="cifra"><div class="n">${enAviso.length}</div><div class="l">en aviso (${AVISO_SM}% o más)</div></div>
+    </div>
+  </div>`}
 
   <div class="bloque">
     <h3>Técnico por técnico <span class="chico">la línea cortada es el tope del ${TOPE_SM}%</span></h3>
@@ -1293,7 +1337,9 @@ function sinMoradores(lun){
       ${hoyVale ? '<span class="man">% mañana</span>' : ''}
     </div>
     ${lista}
-    ${hoyVale ? `<div class="chico" style="margin-top:9px;color:var(--muted)">
+    ${hoyVale ? `<div class="chico" style="margin-top:9px;color:var(--muted);font-size:12px;line-height:1.5">
+      <b>% mañana en naranjo</b>: el técnico entró a la zona de aviso, ${AVISO_SM}% o más contando lo de hoy.
+      En rojo, ya pasaría el tope. Esos suben al principio de la lista.<br>
       <b>% semana</b> es el cierre hasta ayer y no se mueve en todo el día.
       <b>% mañana</b> es con cuánto amanece el técnico contando lo de hoy: sin moradores
       de la semana más los de hoy, sobre las asignadas de la semana más las de hoy.
@@ -1329,6 +1375,17 @@ function sinMoradores(lun){
   $('informe').querySelectorAll('.mini tbody tr').forEach(tr => tr.style.cursor = 'pointer');
   $('btn-tabla2').addEventListener('click', () => mostrarVista('tabla'));
   $('btn-otro').addEventListener('click', limpiar);
+  // En modo directo (se entro desde el panel de rutas) hay que reponer el
+  // camino de vuelta en CADA dibujo: este panel se redibuja cuando llega
+  // rutas.json y al cambiar de semana, y el enlace se borraba con el resto.
+  if(document.body.classList.contains('directo')){
+    const inf = $('informe');
+    const a = document.createElement('a');
+    a.className = 'volver-panel';
+    a.href = URL_PANEL;
+    a.textContent = '\u2190 Volver al panel';
+    inf.insertBefore(a, inf.firstChild);
+  }
   window.scrollTo(0, 0);
 }
 
@@ -1531,7 +1588,7 @@ pintar();
 
   /* Un camino de vuelta al panel, para no dejar al usuario sin salida. */
   const inf = document.getElementById('informe');
-  if(inf && inf.firstChild){
+  if(inf && inf.firstChild && !inf.querySelector('.volver-panel')){   // sinMoradores ya lo pone solo
     const a = document.createElement('a');
     a.className = 'volver-panel';
     a.href = URL_PANEL;
