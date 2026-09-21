@@ -1073,6 +1073,7 @@ function esSinMoradores(o){
 const URL_RUTAS = 'https://raw.githubusercontent.com/luis-sepulveda/Rutas-tecnicos/data/rutas.json';
 let HOY = null;
 let SM_SEMANA = null;          // que semana esta mostrando el panel ahora
+let SM_ELEGIDA = false;        // true si el usuario la eligio a mano con los botones
 
 // Los nombres del portal traen espacio duro (\u00a0) en vez de espacio normal:
 // hoy pasa en ALFREDO ALCAYAGA F y DANIEL NAVARRETE E. A la vista son iguales
@@ -1104,12 +1105,39 @@ function leerRutas(j){
   return { fecha: isoDe(j.fecha_datos), hora: j.actualizado, porTec };
 }
 
+// Lunes de la semana del dia en curso, o '' si no corresponde abrirla:
+//   - domingo: la medicion es de lunes a sabado
+//   - rutas.json viejo (monitor apagado): su fecha no pasa del ultimo dia
+//     cargado, y esa semana ya esta en la lista
+function semanaDeHoy(){
+  if(!HOY || !HOY.fecha) return '';
+  if(new Date(HOY.fecha + 'T00:00:00').getDay() === 0) return '';
+  if(D.ordenes.some(o => o.fecha >= HOY.fecha)) return '';
+  return lunesDe(HOY.fecha);
+}
+
 // Si no llega, el panel queda exactamente como antes. No se cae nada.
 fetch(URL_RUTAS + '?t=' + Date.now(), {cache: 'no-store'})
   .then(r => r.json())
   .then(j => {
     HOY = leerRutas(j);
-    if(HOY && SM_SEMANA) sinMoradores(SM_SEMANA);    // ya estaba a la vista
+    // CASO LUNES (21-09-2026). La lista de semanas sale del historico, y el
+    // historico va un dia atras: el lunes, o a la vuelta de un feriado largo,
+    // la semana en curso todavia no tiene ningun dia cargado y por lo tanto
+    // no existe. El panel abria la semana anterior, lo de hoy quedaba fuera de
+    // ese rango y el amarillo no se dibujaba en ninguna parte, justo el dia en
+    // que no hay verde y es lo unico que se puede mirar.
+    // Se agrega la semana en curso a la lista. No se mezcla con la anterior:
+    // el tope es semanal y el lunes parte de cero.
+    const semHoy = semanaDeHoy();
+    const nueva = !!semHoy && !SEMANAS.includes(semHoy);
+    if(nueva){ SEMANAS.push(semHoy); SEMANAS.sort(); }
+    if(HOY && SM_SEMANA){
+      // Si el panel ya estaba abierto en la semana que salio por defecto, se
+      // pasa a la en curso. Si el usuario eligio otra con los botones, se
+      // respeta: solo se redibuja para que aparezca el boton nuevo.
+      sinMoradores(nueva && !SM_ELEGIDA ? semHoy : SM_SEMANA);
+    }
   })
   .catch(() => { HOY = null; });
 
@@ -1231,7 +1259,9 @@ function sinMoradores(lun){
       <b>${pasados.length
         ? pasados.length + (pasados.length === 1 ? ' técnico pasa el tope' : ' técnicos pasan el tope')
         : 'Ningún técnico pasa el tope'}</b>
-      El equipo cerró la semana con ${sm} sin moradores de ${asig} actividades asignadas, o sea ${pct}%.
+      ${asig
+        ? `El equipo cerró la semana con ${sm} sin moradores de ${asig} actividades asignadas, o sea ${pct}%.`
+        : `Semana recién empezada: todavía no hay ningún día cargado, así que no hay verde. Lo que se ve es solo lo de hoy, medido contra las órdenes asignadas de hoy.`}
       ${pasados.length ? 'Los que pasan salen marcados en rojo.' : ''}
       ${hoyVale && smHoy ? `<span style="color:var(--amber)">Hoy van ${smHoy} más, todavía sin entrar a este cálculo.</span>` : ''}
     </div>
@@ -1289,7 +1319,7 @@ function sinMoradores(lun){
   </div>`;
 
   $('informe').querySelectorAll('.sem-op').forEach(b =>
-    b.addEventListener('click', () => sinMoradores(b.dataset.s)));
+    b.addEventListener('click', () => { SM_ELEGIDA = true; sinMoradores(b.dataset.s); }));
   $('informe').querySelectorAll('.eq-fila,.mini tbody tr').forEach(el =>
     el.addEventListener('click', () => {
       // el que solo tiene lo de hoy no tiene historial que mostrar todavia
@@ -1308,6 +1338,7 @@ if($('btn-sm')){
     $('qtec').value = '';
     $('q-error').innerHTML = '';
     if($('sups')) $('sups').querySelectorAll('.sup-op').forEach(x => x.classList.remove('on'));
+    SM_ELEGIDA = false;                   // se abre la ultima, no la eligio nadie
     sinMoradores(SEMANAS[SEMANAS.length - 1]);
   });
 }
