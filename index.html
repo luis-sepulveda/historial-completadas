@@ -310,6 +310,29 @@
                 padding-left:5px;font-size:11px;font-weight:700;color:var(--amber);
                 font-family:'JetBrains Mono',monospace;white-space:nowrap}
   .pista .tope{position:absolute;left:50%;top:-2px;bottom:-2px;border-left:2px dashed var(--rose)}
+  /* (19-10-2026) tramo ROJO OSCURO a la izquierda del verde: sin moradores en
+     una direccion donde YA habia fallado una visita antes (de el o de otro
+     tecnico). Rayado para que no se confunda con el rojo de "sobre el tope". */
+  .pista .rep{position:absolute;left:0;top:0;bottom:0;border-radius:5px 0 0 5px;
+              background:repeating-linear-gradient(45deg,#7f1d1d 0 5px,#b91c1c 5px 10px);
+              display:flex;align-items:center;justify-content:center;
+              font-size:11px;font-weight:700;color:#fff;font-family:'JetBrains Mono',monospace}
+  .rep-ley{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:3px;
+           background:repeating-linear-gradient(45deg,#7f1d1d 0 3px,#b91c1c 3px 6px)}
+  td.rep-td{color:#b91c1c;font-weight:600}
+  /* (19-10-2026) cada color de la barra se puede tocar: abre el detalle */
+  .pista [data-k]{cursor:zoom-in}
+  .pista [data-k]:hover{outline:2px solid var(--ink);outline-offset:-2px;z-index:2}
+  .pista .hoy-n[data-k]:hover{outline:none;text-decoration:underline}
+  .sm-dlg-cab{padding:10px 17px;font-size:12.5px;color:var(--muted);line-height:1.5;text-align:left;font-weight:400;white-space:normal;text-transform:none;letter-spacing:0;font-size:13px}
+  .sm-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .sm-tabs button{font-family:inherit;font-size:12px;padding:4px 11px;border-radius:999px;cursor:pointer;
+                  border:1px solid var(--line);background:var(--panel);color:var(--muted)}
+  .sm-tabs button.on{border-color:var(--ink);color:var(--ink);font-weight:700}
+  .sm-tabs i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+  .sm-prev{font-size:11.5px;line-height:1.45}
+  .sm-prev b{color:#b91c1c}
+  .sm-nuevo{color:var(--muted);font-size:11.5px}
   .semanas{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
   #vista-tabla .volver{margin-bottom:13px}
 
@@ -1254,7 +1277,9 @@ function leerRutas(j){
     porTec[claveTec(t)] = {
       nom:  limpiaNom(t),
       asig: l.length,
-      sm:   l.filter(o => String(o.cie || '').trim().toLowerCase() === 'sin moradores').length
+      sm:   l.filter(o => String(o.cie || '').trim().toLowerCase() === 'sin moradores').length,
+      smDirs: l.filter(o => String(o.cie || '').trim().toLowerCase() === 'sin moradores').map(o => o.d),
+      smL:    l.filter(o => String(o.cie || '').trim().toLowerCase() === 'sin moradores')
     };
   });
   return { fecha: isoDe(j.fecha_datos), hora: j.actualizado, porTec };
@@ -1296,6 +1321,112 @@ fetch(URL_RUTAS + '?t=' + Date.now(), {cache: 'no-store'})
   })
   .catch(() => { HOY = null; });
 
+// ---------- DIRECCIONES YA FALLADAS (19-10-2026, pedido de Luis) ----------
+// De los sin moradores de un tecnico, cuantos fueron en una direccion donde
+// YA habia fallado una visita antes (de el mismo o de otro tecnico): esos son
+// "repetidos", el cliente no esta nunca, y no dependen tanto del tecnico.
+// Fuente: visitas_dir.json del modulo de rutas (todas las visitas desde el
+// 01-07, completadas y no). Cuenta como "antes" una visita NO completada en
+// la misma direccion en un dia anterior, o el mismo dia mas temprano con otra
+// orden. Si no baja, el panel queda exactamente como antes.
+const URL_VISDIR = 'https://raw.githubusercontent.com/luis-sepulveda/Rutas-tecnicos/data/visitas_dir.json';
+let REP = null;     // { porOt: {ot: idDir}, porDir: {DIRECCION: idDir}, fallas: {idDir: [[iso, ot, hi, tec]]} }
+function claveDir(s){ return limpiaNom(s).toUpperCase(); }
+fetch(URL_VISDIR + '?t=' + Date.now(), {cache: 'no-store'})
+  .then(r => r.json())
+  .then(j => {
+    const porOt = {}, porDir = {}, fallas = {}, tecs = j.tecs || [];
+    (j.dirs || []).forEach((d, i) => { porDir[claveDir(d[0])] = i; });
+    (j.v || []).forEach(v => {
+      if(v[2]) porOt[v[2]] = v[0];
+      if(!v[5]) (fallas[v[0]] = fallas[v[0]] || []).push([String(v[1]), String(v[2] || ''),
+                  typeof v[7] === 'number' ? v[7] : -1, limpiaNom(tecs[v[3]] || ''),
+                  String((j.cies || [])[v[6]] || '')]);
+    });
+    // hora de inicio de cada orden ese dia, para comparar dentro del mismo dia
+    const hora = {};
+    (j.v || []).forEach(v => { if(v[2]) hora[v[2] + '|' + v[1]] = typeof v[7] === 'number' ? v[7] : -1; });
+    const nomDir = (j.dirs || []).map(d => String(d[0] || ''));
+    REP = { porOt, porDir, fallas, hora, nomDir };
+    if(SM_SEMANA) sinMoradores(SM_SEMANA);
+  })
+  .catch(() => { REP = null; });
+
+// Las visitas fallidas ANTERIORES a esta orden en su direccion ([] si no hay)
+function fallasAntes(o){
+  if(!REP) return [];
+  const d = REP.porOt[o.ot];
+  if(d === undefined) return [];
+  const iso = String(o.fecha).replace(/-/g, '');
+  const mi = REP.hora[o.ot + '|' + iso];
+  return (REP.fallas[d] || []).filter(f => f[0] < iso
+    || (f[0] === iso && f[1] !== o.ot && f[2] >= 0 && mi >= 0 && f[2] < mi));
+}
+function esRepetida(o){ return fallasAntes(o).length > 0; }
+// Para lo de HOY se busca por direccion: todo lo de visitas_dir es anterior
+function fallasDir(dir){
+  if(!REP) return [];
+  const d = REP.porDir[claveDir(dir)];
+  return d === undefined ? [] : (REP.fallas[d] || []);
+}
+function dirYaFallada(dir){ return fallasDir(dir).length > 0; }
+function dirDeOt(ot){
+  if(!REP) return '';
+  const d = REP.porOt[ot];
+  return d === undefined ? '' : REP.nomDir[d];
+}
+
+// ---------- DETALLE DE CADA COLOR DE LA BARRA (19-10-2026) ----------
+// Al tocar el rojo, el verde o el amarillo se abre la ventana (#dlg) con las
+// ordenes de ese tramo: fecha, OT, actividad, direccion, horario y las
+// visitas que ya habian fallado antes en esa direccion. Arriba hay botones
+// para pasar de un color a otro sin cerrar la ventana.
+let SM_FILAS = {};
+function escSM(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fIso(iso){ return iso.slice(6, 8) + '-' + iso.slice(4, 6); }
+function previasHtml(l, yo){
+  if(!l.length) return '<span class="sm-nuevo">Primera vez que falla</span>';
+  return '<div class="sm-prev">' + l.slice().sort((a, b) => a[0].localeCompare(b[0])).map(x =>
+    '<div>' + fIso(x[0]) + ' · <b>' + escSM(claveTec(x[3]) === claveTec(yo) ? 'él mismo' : x[3]) + '</b> · ' + escSM(x[4]) + '</div>').join('') + '</div>';
+}
+function verTramoSM(t, k){
+  const f = SM_FILAS[t]; if(!f) return;
+  const rep = f.lSm.filter(esRepetida), nue = f.lSm.filter(o => !esRepetida(o));
+  const N = { rep: rep.length, nue: nue.length, hoy: f.hoyL.length };
+  const tit = { rep: 'En dirección ya fallada', nue: 'Dirección que fallaba por primera vez', hoy: 'Los de hoy' };
+  const col = { rep: 'repeating-linear-gradient(45deg,#7f1d1d 0 3px,#b91c1c 3px 6px)', nue: 'var(--teal)', hoy: 'var(--hoy)' };
+  let filasH = '';
+  if(k === 'hoy'){
+    f.hoyL.forEach(o => {
+      filasH += '<tr><td>hoy</td><td class="ot">' + escSM(o.o) + '</td><td>' + escSM(o.cat || o.t || '') + '</td>'
+        + '<td>' + escSM(o.d) + '</td><td>' + escSM((o.hi || '') + (o.hf ? '–' + o.hf : '')) + '</td>'
+        + '<td>' + (REP ? previasHtml(fallasDir(o.d), t) : '—') + '</td></tr>';
+    });
+  } else {
+    (k === 'rep' ? rep : nue).slice().sort((a, b) => a.fecha.localeCompare(b.fecha)).forEach(o => {
+      filasH += '<tr><td>' + o.fecha.slice(8, 10) + '-' + o.fecha.slice(5, 7) + '</td><td class="ot">' + escSM(o.ot) + '</td>'
+        + '<td>' + escSM(o.categoria || o.tipo || '') + '</td><td>' + escSM(dirDeOt(o.ot) || o.ciudad || '—') + '</td>'
+        + '<td>' + escSM((o.hi || '') + (o.hf ? '–' + o.hf : '')) + '</td>'
+        + '<td>' + (REP ? previasHtml(fallasAntes(o), t) : '—') + '</td></tr>';
+    });
+  }
+  const tabs = ['rep', 'nue', 'hoy'].filter(x => N[x]).map(x =>
+    '<button class="' + (x === k ? 'on' : '') + '" data-k="' + x + '"><i style="background:' + col[x] + '"></i>'
+    + tit[x] + ' (' + N[x] + ')</button>').join('');
+  $('dlg-t').textContent = t + ' · sin moradores · ' + tit[k] + ' (' + N[k] + ')';
+  const cab = '<thead><tr><th colspan="6" style="padding:0"><div class="sm-dlg-cab">'
+    + 'Semana del ' + etiquetaSemana(SM_SEMANA) + ': ' + (f.asig ? '<b>' + f.sm + '</b> sin moradores de ' + f.asig + ' asignadas' : 'todavía sin días cargados')
+    + (f.sm ? ', <b style="color:#b91c1c">' + N.rep + '</b> en dirección ya fallada' : '')
+    + (N.hoy ? ' · hoy <b>' + N.hoy + '</b> más' : '') + '. Toca los botones para ver cada color.'
+    + '<div class="sm-tabs">' + tabs + '</div></div></th></tr>'
+    + '<tr><th class="izq">Fecha</th><th class="izq">OT</th><th class="izq">Actividad</th><th class="izq">Dirección</th>'
+    + '<th class="izq">Horario</th><th class="izq">Visitas que ya habían fallado ahí</th></tr></thead>';
+  $('dlg-tb').innerHTML = cab + '<tbody>' + (filasH || '<tr><td colspan="6" class="vacio">Sin órdenes en este tramo</td></tr>') + '</tbody>';
+  $('dlg-tb').querySelectorAll('.sm-tabs button').forEach(b =>
+    b.addEventListener('click', () => verTramoSM(t, b.dataset.k)));
+  if(!dlg.open) dlg.showModal();
+}
+
 // domingo fuera: la medicion es de lunes a sabado
 const SEMANAS = [...new Set(D.ordenes
   .filter(o => o.fecha && new Date(o.fecha + 'T00:00:00').getDay() !== 0)
@@ -1333,12 +1464,16 @@ function sinMoradores(lun){
 
   const filas = Object.entries(porTec).map(([t, l]) => {
     const sm = l.filter(esSinMoradores).length;
+    const rep = l.filter(o => esSinMoradores(o) && esRepetida(o)).length;
     const h = deHoy[claveTec(t)] || { sm: 0, asig: 0 };
+    const hoyRep = (h.smDirs || []).filter(dirYaFallada).length;
     // El verde y el "X de Y" quedan FIJOS en la semana ya cerrada. Lo de hoy
     // no entra en el porcentaje: va aparte, en el tramo amarillo, como aviso.
     return { t, sup: l[0].supervisor, enD: true,
-             asig: l.length, sm, hoy: h.sm, hoyAsig: h.asig,
-             pct: l.length ? Math.round(1000 * sm / l.length) / 10 : 0 };
+             lSm: l.filter(esSinMoradores), hoyL: h.smL || [],
+             asig: l.length, sm, rep, hoy: h.sm, hoyRep, hoyAsig: h.asig,
+             pct: l.length ? Math.round(1000 * sm / l.length) / 10 : 0,
+             pctSin: l.length ? Math.round(1000 * (sm - rep) / l.length) / 10 : 0 };
   });
 
   // Tecnicos que hoy estan trabajando pero no tienen ningun dia en la semana:
@@ -1353,8 +1488,9 @@ function sinMoradores(lun){
     const previo = suyas.length ? suyas.reduce((a, b) => (a.fecha > b.fecha ? a : b)) : null;
     filas.push({ t: previo ? previo.tecnico : h.nom,
                  sup: previo ? previo.supervisor : '—',
-                 enD: !!previo, asig: 0, sm: 0,
-                 hoy: h.sm, hoyAsig: h.asig, pct: 0 });
+                 enD: !!previo, asig: 0, sm: 0, rep: 0, pctSin: 0, lSm: [], hoyL: h.smL || [],
+                 hoy: h.sm, hoyRep: (h.smDirs || []).filter(dirYaFallada).length,
+                 hoyAsig: h.asig, pct: 0 });
   });
 
   // El largo del tramo amarillo se mide contra las asignadas de la semana,
@@ -1362,6 +1498,7 @@ function sinMoradores(lun){
   filas.forEach(f => {
     const base = f.asig || f.hoyAsig;
     f.anchoV = Math.min(f.pct, 100);
+    f.anchoR = f.asig ? Math.min(100 * f.rep / f.asig, f.anchoV) : 0;
     f.anchoH = base ? Math.min(100 * f.hoy / base, 100 - f.anchoV) : 0;
     // Con que porcentaje amanece MAÑANA: los sin moradores de la semana mas
     // los de hoy, sobre las asignadas de la semana mas las de hoy. No es la
@@ -1390,10 +1527,12 @@ function sinMoradores(lun){
                     || (urgente(a) === 0 ? peor(b) - peor(a) : 0)
                     || sinSemana(a) - sinSemana(b) || b.pct - a.pct);
   const enAviso = filas.filter(f => f.nivel > 0);
+  SM_FILAS = {}; filas.forEach(f => { SM_FILAS[f.t] = f; });
 
   const asig = dela.length;
   const sm = dela.filter(esSinMoradores).length;
   const pct = asig ? Math.round(1000 * sm / asig) / 10 : 0;
+  const smRep = dela.filter(o => esSinMoradores(o) && esRepetida(o)).length;
   const smHoy = filas.reduce((s, f) => s + f.hoy, 0);
   // asignadas de hoy de TODO el equipo, no solo de los que salen en la lista:
   // el lunes la lista trae unicamente a los que ya tienen sin moradores
@@ -1414,9 +1553,10 @@ function sinMoradores(lun){
     const cabe = f.anchoH >= 4.5;
     lista += `<div class="eq-fila${f.pct > TOPE_SM ? '' : f.nivel === 2 ? ' ojo pasa' : f.nivel === 1 ? ' ojo' : ' normal'}" data-t="${f.t}" data-d="${f.enD ? 1 : 0}">
       <span class="nom">${f.t}</span>
-      <div class="pista"><span class="rell${cl}" style="width:${f.anchoV}%"></span>
-        ${f.hoy ? `<span class="hoy" style="left:${f.anchoV}%;width:${f.anchoH}%">${cabe ? f.hoy : ''}</span>` : ''}
-        ${f.hoy && !cabe ? `<span class="hoy-n" style="left:${f.anchoV + f.anchoH}%">${f.hoy}</span>` : ''}
+      <div class="pista"><span class="rell${cl}"${f.sm ? ' data-k="nue"' : ''} style="width:${f.anchoV}%"></span>
+        ${f.rep ? `<span class="rep" data-k="rep" style="width:${f.anchoR}%" title="${f.rep} de sus ${f.sm} sin moradores fueron en direcciones donde ya habían fallado antes">${f.anchoR >= 4.5 ? f.rep : ''}</span>` : ''}
+        ${f.hoy ? `<span class="hoy" data-k="hoy" style="left:${f.anchoV}%;width:${f.anchoH}%">${cabe ? f.hoy : ''}</span>` : ''}
+        ${f.hoy && !cabe ? `<span class="hoy-n" data-k="hoy" style="left:${f.anchoV + f.anchoH}%">${f.hoy}</span>` : ''}
         <i class="tope"></i></div>
       <span class="pc">${f.asig ? `${f.sm} de ${f.asig}` : '—'}</span>
       <span class="dif${f.pct > TOPE_SM ? ' mas' : ''}">${f.asig ? f.pct + '%' : '—'}</span>
@@ -1428,7 +1568,9 @@ function sinMoradores(lun){
     tabla += `<tr data-t="${f.t}" data-d="${f.enD ? 1 : 0}"><td class="izq">${f.t}</td><td class="izq">${f.sup}</td>`
       + `<td>${f.asig}</td>`
       + `<td>${f.sm || '·'}${f.hoy ? ` <span style="color:var(--amber)">+${f.hoy} hoy</span>` : ''}</td>`
+      + (REP ? `<td class="${f.rep ? 'rep-td' : ''}">${f.rep || '·'}${f.hoyRep ? ` <span style="color:var(--amber)">+${f.hoyRep} hoy</span>` : ''}</td>` : '')
       + `<td class="${f.pct > TOPE_SM ? 'may' : ''}">${f.pct}%</td>`
+      + (REP ? `<td>${f.asig ? f.pctSin + '%' : '—'}</td>` : '')
       + `<td>${f.pct > TOPE_SM ? 'Sobre el tope' : 'Dentro'}</td></tr>`;
   });
 
@@ -1449,6 +1591,8 @@ function sinMoradores(lun){
         ? `El equipo cerró la semana con ${sm} sin moradores de ${asig} actividades asignadas, o sea ${pct}%.`
         : `Semana recién empezada: todavía no hay ningún día cargado, así que no hay verde. Lo que se ve es solo lo de hoy, medido contra las órdenes asignadas de hoy.`}
       ${pasados.length ? 'Los que pasan salen marcados en rojo.' : ''}
+      ${REP && sm ? `<div style="margin-top:6px"><span class="rep-ley"></span><span style="font-weight:700;color:#b91c1c">${smRep} de los ${sm}</span>
+        (${Math.round(100 * smRep / sm)}%) fueron en direcciones donde ya había fallado una visita antes, del mismo técnico o de otro.</div>` : ''}
       ${hoyVale && smHoy ? `<span style="color:var(--amber)">Hoy van ${smHoy} más, todavía sin entrar a este cálculo.</span>` : ''}
       ${hoyVale && enAviso.length ? `<div class="aviso-txt" style="margin-top:6px">Ojo, contando lo de hoy
         ${enAviso.length === 1 ? 'amanece' : 'amanecen'} mañana en ${AVISO_SM}% o más:
@@ -1485,12 +1629,17 @@ function sinMoradores(lun){
       <span class="nom">Técnico</span>
       <span class="pista">${hoyVale
         ? 'Verde: sin moradores hasta ayer &nbsp;·&nbsp; Amarillo: los de hoy, con la cantidad adentro'
-        : 'Sin moradores de la semana'}</span>
+        : 'Sin moradores de la semana'}${REP ? ' &nbsp;·&nbsp; <span class="rep-ley"></span>Rojo rayado: en dirección ya fallada antes' : ''}</span>
       <span class="pc">Hasta ayer</span>
       <span class="dif">% semana</span>
       ${hoyVale ? '<span class="man">% mañana</span>' : ''}
     </div>
     ${lista}
+    ${REP ? `<div class="chico" style="margin-top:9px;color:var(--muted);font-size:12px;line-height:1.5">
+      <span class="rep-ley"></span><b>Rojo rayado</b>: de sus sin moradores, los que fueron en una dirección
+      donde ya había fallado una visita antes (sin moradores, reagenda, dirección incorrecta, etc.), del mismo
+      técnico o de otro, desde el 01-07. Son clientes que no están nunca: le suman al técnico, pero no dependen
+      tanto de él. El resto del verde son direcciones que fallaban por primera vez.</div>` : ''}
     ${hoyVale ? `<div class="chico" style="margin-top:9px;color:var(--muted);font-size:12px;line-height:1.5">
       <b>% mañana en naranjo</b>: el técnico entró a la zona de aviso, ${AVISO_SM}% o más contando lo de hoy.
       En rojo, ya pasaría el tope. Esos suben al principio de la lista.<br>
@@ -1505,7 +1654,7 @@ function sinMoradores(lun){
     <h3>Detalle</h3>
     <div class="scroll"><table class="mini">
       <thead><tr><th class="izq">Técnico</th><th class="izq">Supervisor</th>
-                 <th>Asignadas</th><th>Sin moradores</th><th>%</th><th>Estado</th></tr></thead>
+                 <th>Asignadas</th><th>Sin moradores</th>${REP ? '<th title="Direcciones donde ya había fallado una visita antes">En dirección ya fallada</th>' : ''}<th>%</th>${REP ? '<th title="Sin moradores en direcciones nuevas, sobre las asignadas">% sin las repetidas</th>' : ''}<th>Estado</th></tr></thead>
       <tbody>${tabla}</tbody>
     </table></div>
   </div>
@@ -1520,6 +1669,12 @@ function sinMoradores(lun){
 
   $('informe').querySelectorAll('.sem-op').forEach(b =>
     b.addEventListener('click', () => { SM_ELEGIDA = true; sinMoradores(b.dataset.s); }));
+  // tocar un color de la barra abre su detalle, sin irse a la ficha del tecnico
+  $('informe').querySelectorAll('.pista [data-k]').forEach(el =>
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      verTramoSM(el.closest('.eq-fila').dataset.t, el.dataset.k);
+    }));
   $('informe').querySelectorAll('.eq-fila,.mini tbody tr').forEach(el =>
     el.addEventListener('click', () => {
       // el que solo tiene lo de hoy no tiene historial que mostrar todavia
