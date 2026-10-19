@@ -333,6 +333,26 @@
   .sm-prev{font-size:11.5px;line-height:1.45}
   .sm-prev b{color:#b91c1c}
   .sm-nuevo{color:var(--muted);font-size:11.5px}
+  /* (19-10-2026, 13:50) el detalle en tarjetas, una por orden, para leerlo
+     de arriba abajo: cuando y donde fue, y debajo lo que ya habia pasado ahi */
+  #dlg-tb td.sm-cel{padding:0;text-align:left;white-space:normal}
+  .sm-card{display:grid;grid-template-columns:62px 1fr;gap:4px 14px;padding:13px 17px;text-align:left}
+  .sm-card .fe{grid-row:1 / span 3;font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;
+               color:var(--ink);line-height:1.2}
+  .sm-card .fe small{display:block;font-family:inherit;font-size:10.5px;font-weight:500;color:var(--muted);margin-top:2px}
+  .sm-card .di{font-size:14px;font-weight:700;color:var(--ink)}
+  .sm-card .me{font-size:12px;color:var(--muted)}
+  .sm-card .me .ot{font-size:11.5px}
+  .sm-hist{margin-top:6px;border-left:3px solid #b91c1c;background:color-mix(in srgb,#b91c1c 6%,transparent);
+           border-radius:0 8px 8px 0;padding:7px 11px}
+  .sm-hist .t{font-size:11.5px;font-weight:700;color:#b91c1c;margin-bottom:4px}
+  .sm-hist .r{display:grid;grid-template-columns:48px minmax(0,230px) minmax(0,1fr);gap:12px;font-size:12.5px;padding:2px 0}
+  .sm-hist .r .f{font-family:'JetBrains Mono',monospace;color:var(--muted)}
+  .sm-hist .r .q{font-weight:600;color:var(--ink)}
+  .sm-hist .r .q.yo{color:#b91c1c}
+  .sm-hist .r .m{color:var(--muted)}
+  .sm-primera{margin-top:6px;font-size:12px;color:var(--muted);border-left:3px solid var(--teal);padding:4px 11px}
+  @media (max-width:640px){ .sm-hist .r{grid-template-columns:44px 1fr} .sm-hist .r .m{grid-column:2} }
   .semanas{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
   #vista-tabla .volver{margin-bottom:13px}
 
@@ -1385,10 +1405,35 @@ let SM_FILAS = {};
 function escSM(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function fIso(iso){ return iso.slice(6, 8) + '-' + iso.slice(4, 6); }
 function previasHtml(l, yo){
-  if(!l.length) return '<span class="sm-nuevo">Primera vez que falla</span>';
-  return '<div class="sm-prev">' + l.slice().sort((a, b) => a[0].localeCompare(b[0])).map(x =>
-    '<div>' + fIso(x[0]) + ' · <b>' + escSM(claveTec(x[3]) === claveTec(yo) ? 'él mismo' : x[3]) + '</b> · ' + escSM(x[4]) + '</div>').join('') + '</div>';
+  if(!l.length) return '<div class="sm-primera">Primera vez que falla una visita en esta dirección.</div>';
+  const o = l.slice().sort((a, b) => a[0].localeCompare(b[0]) || a[2] - b[2]);
+  const tecs = new Set(o.map(x => claveTec(x[3])));
+  const suyo = tecs.has(claveTec(yo));
+  const otros = [...tecs].filter(x => x !== claveTec(yo)).length;
+  const quien = otros && suyo ? otros + (otros === 1 ? ' técnico más' : ' técnicos más') + ' y él mismo'
+              : otros ? otros + (otros === 1 ? ' técnico' : ' técnicos') : 'solo él mismo';
+  return '<div class="sm-hist"><div class="t">Antes ya había fallado ' + o.length + (o.length === 1 ? ' vez' : ' veces')
+    + ' en esta dirección · ' + quien + '</div>'
+    + o.map(x => { const yoMismo = claveTec(x[3]) === claveTec(yo);
+        return '<div class="r"><span class="f">' + fIso(x[0]) + '</span><span class="q' + (yoMismo ? ' yo' : '') + '">'
+          + escSM(yoMismo ? 'Él mismo' : x[3]) + '</span><span class="m">' + escSM(x[4]) + '</span></div>'; }).join('')
+    + '</div>';
 }
+function minutosSM(hi, hf){
+  const m = x => { const q = /^(\d{1,2}):(\d{2})/.exec(String(x || '')); return q ? +q[1] * 60 + +q[2] : null; };
+  const a = m(hi), b = m(hf);
+  return a !== null && b !== null && b >= a ? (b - a) + ' min' : '';
+}
+function tarjetaSM(fe, dia, dir, act, ot, hi, hf, hist){
+  const dur = minutosSM(hi, hf);
+  return '<tr><td class="sm-cel" colspan="6"><div class="sm-card">'
+    + '<div class="fe">' + fe + '<small>' + dia + '</small></div>'
+    + '<div class="di">' + escSM(dir || 'Dirección no disponible') + '</div>'
+    + '<div class="me">' + escSM(act) + ' · OT <span class="ot">' + escSM(ot) + '</span>'
+    + (hi ? ' · en terreno ' + escSM(hi) + (hf ? '–' + escSM(hf) : '') + (dur ? ' (' + dur + ')' : '') : '') + '</div>'
+    + '<div>' + hist + '</div></div></td></tr>';
+}
+const DIAS_SM = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 function verTramoSM(t, k){
   const f = SM_FILAS[t]; if(!f) return;
   const rep = f.lSm.filter(esRepetida), nue = f.lSm.filter(o => !esRepetida(o));
@@ -1397,17 +1442,16 @@ function verTramoSM(t, k){
   const col = { rep: 'repeating-linear-gradient(45deg,#7f1d1d 0 3px,#b91c1c 3px 6px)', nue: 'var(--teal)', hoy: 'var(--hoy)' };
   let filasH = '';
   if(k === 'hoy'){
-    f.hoyL.forEach(o => {
-      filasH += '<tr><td>hoy</td><td class="ot">' + escSM(o.o) + '</td><td>' + escSM(o.cat || o.t || '') + '</td>'
-        + '<td>' + escSM(o.d) + '</td><td>' + escSM((o.hi || '') + (o.hf ? '–' + o.hf : '')) + '</td>'
-        + '<td>' + (REP ? previasHtml(fallasDir(o.d), t) : '—') + '</td></tr>';
+    f.hoyL.slice().sort((a, b) => String(a.hi || '').localeCompare(String(b.hi || ''))).forEach(o => {
+      filasH += tarjetaSM('HOY', HOY && HOY.fecha ? HOY.fecha.slice(8, 10) + '-' + HOY.fecha.slice(5, 7) : '',
+        o.d, o.cat || o.t || '', o.o, o.hi, o.hf, REP ? previasHtml(fallasDir(o.d), t) : '');
     });
   } else {
-    (k === 'rep' ? rep : nue).slice().sort((a, b) => a.fecha.localeCompare(b.fecha)).forEach(o => {
-      filasH += '<tr><td>' + o.fecha.slice(8, 10) + '-' + o.fecha.slice(5, 7) + '</td><td class="ot">' + escSM(o.ot) + '</td>'
-        + '<td>' + escSM(o.categoria || o.tipo || '') + '</td><td>' + escSM(dirDeOt(o.ot) || o.ciudad || '—') + '</td>'
-        + '<td>' + escSM((o.hi || '') + (o.hf ? '–' + o.hf : '')) + '</td>'
-        + '<td>' + (REP ? previasHtml(fallasAntes(o), t) : '—') + '</td></tr>';
+    (k === 'rep' ? rep : nue).slice().sort((a, b) => a.fecha.localeCompare(b.fecha) || String(a.hi || '').localeCompare(String(b.hi || ''))).forEach(o => {
+      filasH += tarjetaSM(o.fecha.slice(8, 10) + '-' + o.fecha.slice(5, 7),
+        DIAS_SM[new Date(o.fecha + 'T00:00:00').getDay()],
+        dirDeOt(o.ot) || o.ciudad, o.categoria || o.tipo || '', o.ot, o.hi, o.hf,
+        REP ? previasHtml(fallasAntes(o), t) : '');
     });
   }
   const tabs = ['rep', 'nue', 'hoy'].filter(x => N[x]).map(x =>
@@ -1418,9 +1462,7 @@ function verTramoSM(t, k){
     + 'Semana del ' + etiquetaSemana(SM_SEMANA) + ': ' + (f.asig ? '<b>' + f.sm + '</b> sin moradores de ' + f.asig + ' asignadas' : 'todavía sin días cargados')
     + (f.sm ? ', <b style="color:#b91c1c">' + N.rep + '</b> en dirección ya fallada' : '')
     + (N.hoy ? ' · hoy <b>' + N.hoy + '</b> más' : '') + '. Toca los botones para ver cada color.'
-    + '<div class="sm-tabs">' + tabs + '</div></div></th></tr>'
-    + '<tr><th class="izq">Fecha</th><th class="izq">OT</th><th class="izq">Actividad</th><th class="izq">Dirección</th>'
-    + '<th class="izq">Horario</th><th class="izq">Visitas que ya habían fallado ahí</th></tr></thead>';
+    + '<div class="sm-tabs">' + tabs + '</div></div></th></tr></thead>';
   $('dlg-tb').innerHTML = cab + '<tbody>' + (filasH || '<tr><td colspan="6" class="vacio">Sin órdenes en este tramo</td></tr>') + '</tbody>';
   $('dlg-tb').querySelectorAll('.sm-tabs button').forEach(b =>
     b.addEventListener('click', () => verTramoSM(t, b.dataset.k)));
