@@ -613,6 +613,57 @@
 })();
 </script>
 <script>
+/* ===== (21-11-2026) INTERRUPTOR DE EMERGENCIA =====
+   Luis: "algo que pueda hacer antes de entrar a reunion ... que bloquee todo el funcionamiento". En el repo Rutas-tecnicos
+   (rama main) esta estado.json con {"activo": true}. Esta pagina lo revisa al abrirse y cada 2 minutos:
+   - si dice "activo": false -> borra de este navegador la clave (pzLlave), la llave de los datos (pzDatos) y la revision
+     de equipo del dia, y muestra solo "Pagina fuera de servicio". Nadie ve nada, aunque el equipo tuviera todo guardado.
+   - si vuelve a decir true -> la pagina vuelve a funcionar y cada persona pone su clave de nuevo.
+   - si estado.json no se puede leer (sin internet, GitHub caido o el archivo no existe) no hace nada.
+   GitHub guarda ese archivo hasta ~5 minutos en su cache: el cambio llega a todos en un maximo de unos 5 minutos.
+   Esta en: Modulo (index.html), Actividades-diario (index.html y pantalla.html) y el Historial (index + generador). */
+(function(){
+  if(window.__pzInterruptor) return; window.__pzInterruptor = 1;
+  const URL_ESTADO = 'https://raw.githubusercontent.com/luis-sepulveda/Rutas-tecnicos/main/estado.json';
+  const MARCA = 'pzApagado';
+  const borrar = function(){ try { [localStorage, sessionStorage].forEach(function(st){ ['pzLlave','pzDatos','pzEquipoDia'].forEach(function(k){ st.removeItem(k); }); }); } catch(e){} };
+  const tapar = function(){
+    const poner = function(){
+      if(document.getElementById('pzFuera')) return;
+      const d = document.createElement('div'); d.id = 'pzFuera';
+      d.setAttribute('style', 'position:fixed;inset:0;z-index:2147483647;background:#0f1d33;color:#fff;display:flex;align-items:center;justify-content:center;font:600 20px system-ui,sans-serif;text-align:center;padding:20px');
+      d.textContent = 'Página fuera de servicio.';
+      document.body.appendChild(d);
+      document.documentElement.style.overflow = 'hidden';
+      Array.prototype.forEach.call(document.body.children, function(c){ if(c !== d) c.style.display = 'none'; });
+    };
+    if(document.body) poner(); else document.addEventListener('DOMContentLoaded', poner);
+  };
+  let apagado = false; try { apagado = localStorage.getItem(MARCA) === '1'; } catch(e){}
+  if(apagado){ borrar(); tapar(); }
+  const revisar = function(){
+    const x = new XMLHttpRequest();          /* XHR y no fetch: asi no pasa por el lector de datos cifrados */
+    x.open('GET', URL_ESTADO + '?t=' + Date.now());
+    x.timeout = 15000;
+    x.onload = function(){
+      if(x.status !== 200) return;
+      let j = null; try { j = JSON.parse(x.responseText); } catch(e){ return; }
+      if(!j || typeof j.activo !== 'boolean') return;
+      if(j.activo === false){
+        try { localStorage.setItem(MARCA, '1'); } catch(e){}
+        borrar(); if(!apagado){ apagado = true; tapar(); }
+      } else if(apagado){
+        try { localStorage.removeItem(MARCA); } catch(e){}
+        location.reload();
+      }
+    };
+    x.send();
+  };
+  revisar();
+  setInterval(revisar, 120000);
+})();
+</script>
+<script>
 /* (20-11-2026) DATOS CIFRADOS: rutas.json llega cifrado desde GitHub. Se abre con la llave que queda en este navegador
    al entrar al Modulo de Actividades con la clave de la persona (luis-sepulveda.github.io comparte esa llave entre
    sus paginas). Sin llave (nunca entro al Modulo en este navegador) se sigue como si rutas.json no hubiera llegado:
